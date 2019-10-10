@@ -1,22 +1,12 @@
-/*  LIBRERIA PID
-   Algoritmo basato sulla correzione dell’errore dato un INPUT al fine di ragiungere il setpoint desiderato controllando l’OUTPUT
-
-   Esempio:
-   Se ti riferissi ad un automobile in cui l’INPUT è la velocità ed il setpoint è la velocità a cui desideri andare l’OUTPUT è l’angolo da imporre al pedale dell’accelleratore.
-
-   Costruttore:
-   Input: di tipo double, è la variabile contenente la rilavazione eseguita dal sistema
-   Output: di tipo double, è la variabile con cui imponi un comando al sistema
-   Setpoint: di tipo double, è il punto di arrivo desiderato
-   Kp, Ki, Kd: di tipo double >= 0,
-        rappresentano le tre costati mediante cui l’algoritmo modifica il proprio comportamento per raggiungere il punto desiderato
-   Direction: puoi definirla DIRECT o REVERSE e determina la direzione in cui si sposterà l’output in funzione dell’errore rilevato per raggiungere il setpoint
-
+/*  
   FUNZIONAMENTO IR VECCHIO
   Gli infrarossi ritornano valori tra 0 e 900, 900 è nero, -1 è solo un valore di debug
   per indicare che il sensore non è _iState in grado di leggere nulla, se il pin digitale del sensore
   è zero allora il sensore è collegato, altrimenti non è collegato / non è detecato da arduino
 
+  FUNZIONAMENTO IR NUOVO
+  Vedere lo sketch su GitHub riguardante es_IR
+  
   FUNZIONAMENTO ALGORITMO
   Di seguito indicherò i sensori con sx, top e dx per sinistra, avanti e destra. Con sensori ON intendo la rilevazione del colore nero.
   Robot parte in posizione neutra con i sensori sulla linea nera, di conseguenza tutti attivati. Deve andare avanti proseguendo e avendo prevalentemente il sensore al mezzo sul nero
@@ -24,19 +14,16 @@
   per evitare robot a zig-zag.
 
   Riguardare logica curve a 90 gradi.
+
+    tabella per 
+    #define delay_giro_180 1028
+    #define delay_giro_90 514
+    #define delay_giro_45 257
+    #define delay_giro_30 200
 */
 
 //Librerie
 #include <Servo.h>      //servo motori
-#include <PID_v1.h>     //proporzionale integrale derivato
-
-//Parametri Libreria PID
-#define PIN_INPUT 0
-#define PIN_OUTPUT 3
-double Setpoint, Input, Output;
-//Specify the links and initial tuning parameters
-double Kp = 2, Ki = 5, Kd = 1;
-PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
 #pragma region PIN
 
@@ -45,24 +32,20 @@ PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 #define PIN_RUOTA_DESTRA  9
 
 //Infrarossi
-#define PIN_INFRA_DESTR_DIG  2
-#define PIN_INFRA_AV_DIG 0
-#define PIN_INFRA_SINIST_DIG 1
+#define PIN_INFRA_DESTR_DIG  3
+#define PIN_INFRA_AV_DIG 2
+#define PIN_INFRA_SINIST_DIG 4
 
-#pragma endregion
+#pragma endregion 
 
-//Valori Infrarossi Colori
-#define NERO 300
-#define BIANCO 80
-
-//Direzioni Servo (gradi)
+//Direzioni Servo (valori)
 #define SERV_STOP 90
 #define SERV_SINIST_AV 0
 #define SERV_SINIST_DIETR 180
 #define SERV_DEST_AV 180
 #define SERV_DEST_DIETR 0
 
-//enumeratore di stato indicante l'orientamento teorico della linea rispetto al robot
+//enumeratore di stato indicante l'orientamento teorico della linea rispetto al robot (dov'è la linea)
 enum eState{ osx, xsx, sx, top, dx, xdx, odx };     //out sinistra, extreme sinistra, sinistra, avanti, destra, extreme destra, out destra
 
 //Cache stati precedenti (gioco di tempo/impatto per curve anomale)
@@ -103,8 +86,18 @@ Infrarossi* InfraDestra;
 Infrarossi* InfraAvanti;
 Infrarossi* InfraSinistra;
 
+//fermo ruota sinistra
+void Stop_Sx(){
+  Ruota_Sinistra.write(SERV_STOP);
+}
+
+//ferma ruota destra
+void Stop_Dx(){
+  Ruota_Destra.write(SERV_STOP);
+}
+
 //Procedura ferma entrambe le ruote
-void Stop() {
+void Stop_Both() {
 
   Ruota_Sinistra.write(SERV_STOP);
   Ruota_Destra.write(SERV_STOP);
@@ -126,67 +119,91 @@ void Go_Dietro() {
 
 //Procedura setta e avvia svolta a sx a seconda della proriotà data (xsx o sx)
 void Vai_Sinistra(eState _incisione) {
-
-  int _iGradazione;
-  Ruota_Destra.write(SERV_DEST_AV);
+// dx 90stop a 180max, sx da 90stop a 0max
+int _iGradazione_sx, _iGradazione_dx;
   switch (_incisione) {
     case osx:
-      _iGradazione = 70;      //cammina-, curva+
+      _iGradazione_dx = SERV_DEST_AV;      //cammina-, curva+
+      _iGradazione_sx = SERV_STOP;
       break;
 
     case xsx:
-      _iGradazione = 50;
+      _iGradazione_dx = SERV_DEST_AV;
+      _iGradazione_sx = 75;
       break;
 
     case sx:
-      _iGradazione = 10;      //cammina+, curva-
+      _iGradazione_dx = SERV_DEST_AV;      //cammina+, curva-
+      _iGradazione_sx = 10;
       break;
   }
 
-  Ruota_Sinistra.write(_iGradazione);
+  Ruota_Destra.write(_iGradazione_dx);
+  Ruota_Sinistra.write(_iGradazione_sx);
 }
 
 //Procedura setta e avvia svolta a dx a seconda della priorità data (xdx o dx)
 void Vai_Destra(eState _incisione) {
-
-  int _iGradazione;
-  Ruota_Sinistra.write(SERV_SINIST_AV);
+// dx 90stop a 180max, sx da 90stop a 0max
+  int _iGradazione_dx, _iGradazione_sx;
   switch (_incisione) {
     case odx:
-      _iGradazione = 110;     //cammina-, curva+
+      _iGradazione_dx = SERV_STOP;     //cammina-, curva+
+      _iGradazione_sx = SERV_SINIST_AV;
       break;
 
     case xdx:
-      _iGradazione = 130;
+      _iGradazione_dx = 130;
+      _iGradazione_sx = SERV_SINIST_AV;
       break;
 
     case dx:
-      _iGradazione = 170;     //cammina+, curva-
+      _iGradazione_dx = 170;     //cammina+, curva-
+      _iGradazione_sx = SERV_SINIST_AV;
       break;
   }
 
-  Ruota_Destra.write(_iGradazione);
+  Ruota_Sinistra.write(_iGradazione_sx);
+  Ruota_Destra.write(_iGradazione_dx);
 }
 
 //Procedura principale in loop
 void FollowTheLine() {
-
+  //get valori sensori
   _bNeroDestra = InfraDestra->IsBlack();
   _bNeroAvanti = InfraAvanti->IsBlack();
   _bNeroSinistra = InfraSinistra->IsBlack();
 
+  //andare dritto se
   if ((_bNeroSinistra  && _bNeroAvanti && _bNeroDestra) || (!_bNeroSinistra && _bNeroAvanti && !_bNeroDestra))
     _eState = top;
-  else if(!_bNeroSinistra && !_bNeroAvanti && !_bNeroDestra)
-      _eState = (_eCache == xsx || _eCache == sx) ? osx : odx;
+  //se robot uscito, controllare in cache da dove e assegnarlo
+  else if(!_bNeroSinistra && !_bNeroAvanti && !_bNeroDestra) {
+    switch(_eCache) {
+      case osx:
+      case xsx:
+      case sx:
+        _eState = osx;
+        break;
+        
+      case odx:
+      case xdx:
+      case dx:
+        _eState = odx;
+        break;
+    }
+  }
   else {
-
+    //linea a sinistra
     if(_bNeroSinistra && !_bNeroAvanti && !_bNeroDestra)
       _eState = xsx;     //andare a sinistra (mod+)
+    //linea a sinistra e centro
     else if(_bNeroSinistra && _bNeroAvanti && !_bNeroDestra)
       _eState = sx;     //andare a sinistra (mod)
+    //linea a destra e centro
     else if(!_bNeroSinistra && _bNeroAvanti && _bNeroDestra)
       _eState = dx;     //andare a sinistra (mod)
+    //linea solo a destra
     else if(!_bNeroSinistra && !_bNeroAvanti && _bNeroDestra)
       _eState = xdx;     //andare a sinistra (mod+)
   }
@@ -194,15 +211,9 @@ void FollowTheLine() {
   //switch gestore del moto del robot
   switch (_eState) {
     case osx:
-      Vai_Sinistra(_eState);      //mod++
-      break;
-
     case xsx:
-      Vai_Sinistra(_eState);     //mod+
-      break;
-
     case sx:
-      Vai_Sinistra(_eState);     //mod
+      Vai_Sinistra(_eState);
       break;
 
     case top:
@@ -210,15 +221,9 @@ void FollowTheLine() {
       break;
 
     case dx:
-      Vai_Destra(_eState);     //mod
-      break;
-    
     case xdx:
-      Vai_Destra(_eState);     //mod+
-      break;
-
     case odx:
-      Vai_Destra(_eState);      //mod++
+      Vai_Destra(_eState);     //mod
       break;
   }
 
@@ -226,21 +231,16 @@ void FollowTheLine() {
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(9600);   //debug
   Ruota_Sinistra.attach(PIN_RUOTA_SINISTRA);
   Ruota_Destra.attach(PIN_RUOTA_DESTRA);
   InfraDestra = new Infrarossi(PIN_INFRA_DESTR_DIG);
   InfraAvanti = new Infrarossi(PIN_INFRA_AV_DIG);
   InfraSinistra = new Infrarossi(PIN_INFRA_SINIST_DIG);
-  delay(500);
+  delay(3000);       //ritardo iniziale
 }
 
 void loop() {
   FollowTheLine();
   delay(10);
-  //debug seriale
-  Serial.println("Dx -> " + InfraDestra->IsBlack());
-  Serial.println("Centro -> " + InfraAvanti->IsBlack());
-  Serial.println("Sx -> " + InfraSinistra->IsBlack());
-  delay(1000);
 }
