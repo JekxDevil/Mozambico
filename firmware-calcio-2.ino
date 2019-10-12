@@ -17,22 +17,22 @@
 
 /* Selezionare la scheda in uso */
 //int boardSelected = MI_PRIMER_KIT_DE_ROBOTICA_BLUETOOTH;
-//int boardSelected = BQ_ZUM_CORE_1;
-int boardSelected = BQ_ZUM_CORE_2;
+int boardSelected = BQ_ZUM_CORE_1;
+//int boardSelected = BQ_ZUM_CORE_2;
 //int boardSelected = BQ_ZUM_CORE_2_CON_BLUETOOTH_ESTERNO;
 
 /* Definizione dei PIN usati sulla scheda */
-#define pinruotaSinistra         8   /*  Sinistra servo Ruota       */
+#define pinruotaSinistra         10/*  Sinistra servo Ruota       */
 #define pinruotaDestra           9   /*  Destra servo Ruota         */
 
 
 /* Definition of the values ​​that can take continuous rotation servo,
   that is, the ruotas */
 #define ruotaStopValore 90
-#define ruotaSinistraAvantiValore 0
-#define ruotaSinistraIndietroValore 180
-#define ruotaDestraAvantiValore 180
-#define ruotaDestraIndietroValore 0
+#define ruotaSinistraAvantiValore 180
+#define ruotaSinistraIndietroValore 0
+#define ruotaDestraAvantiValore 0
+#define ruotaDestraIndietroValore 180
 
 /* Size of the received data buffer */
 #define bufferSize 5
@@ -149,7 +149,7 @@ void checkData(char* data) {
 
   /* Empty the Serial */
   if (boardSelected == BQ_ZUM_CORE_2_CON_BLUETOOTH_ESTERNO) {
-    Serial1.flush();
+    Serial.flush();
   }
   else {
     Serial.flush();
@@ -173,8 +173,8 @@ void setup() {
 
   /* Open the Bluetooth Serial and empty it */
   if (boardSelected == BQ_ZUM_CORE_2_CON_BLUETOOTH_ESTERNO) {
-    Serial1.begin(vel_bluetooth);
-    Serial1.flush();
+    Serial.begin(vel_bluetooth);
+    Serial.flush();
   }
   else {
     Serial.begin(vel_bluetooth);
@@ -193,7 +193,7 @@ void loop() {
 
   /* If there is something in the Bluetooth serial port */
 if (boardSelected == BQ_ZUM_CORE_2_CON_BLUETOOTH_ESTERNO) {
-  if (Serial1.available() > 0) {
+  if (Serial.available() > 0) {
 
     /* Reset the iterator and clear the buffer */
     i = 0;
@@ -204,7 +204,7 @@ if (boardSelected == BQ_ZUM_CORE_2_CON_BLUETOOTH_ESTERNO) {
     delay(bufferSize);
 
     /* Number of characters availables in the Bluetooth Serial */
-    numChar = Serial1.available();
+    numChar = Serial.available();
 
     /* Limit the number of characters that will be read from the
        Serial to avoid reading more than the size of the buffer */
@@ -214,7 +214,7 @@ if (boardSelected == BQ_ZUM_CORE_2_CON_BLUETOOTH_ESTERNO) {
 
     /* Read the Bluetooth Serial and store it in the buffer */
     while (numChar--) {
-      dataBuffer[i++] = Serial1.read();
+      dataBuffer[i++] = Serial.read();
 
       /* As data trickles in from your serial port you are
         grabbing as much as you can, but then when it runs out
