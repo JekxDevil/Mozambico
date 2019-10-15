@@ -145,13 +145,13 @@ void Vai_Sinistra(eState _incisione)
     break;
 
   case xsx:
-    _iGradazione_dx = 30;  //35  60
-    _iGradazione_sx = 110; //80   20
+    _iGradazione_dx = 20;  //35  60
+    _iGradazione_sx = 115; //80   20
     break;
 
   case sx:
-    _iGradazione_dx = 40;  //cammina+, curva- 20   50
-    _iGradazione_sx = 120; //70    30
+    _iGradazione_dx = SERV_DEST_AV;  //cammina+, curva- 20   50
+    _iGradazione_sx = SERV_STOP; //70    30
     break;
   }
 
@@ -172,13 +172,13 @@ void Vai_Destra(eState _incisione)
     break;
 
   case xdx:
-    _iGradazione_dx = 70;  //120  20
-    _iGradazione_sx = 150; //130 60
+    _iGradazione_dx = 65;  //120  20
+    _iGradazione_sx = 160; //130 60
     break;
 
   case dx:
-    _iGradazione_dx = 60;  //cammina+, curva- 135  30
-    _iGradazione_sx = 140; //120   50
+    _iGradazione_dx = SERV_STOP;  //cammina+, curva- 135  30
+    _iGradazione_sx = SERV_SINIST_AV; //120   50
     break;
   }
 
