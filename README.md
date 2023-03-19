@@ -1,6 +1,6 @@
 <!-- Codename: Mozambique -->
 
-# RO19
+# OR19
 Scripts for Olimpiadi Robotica 2019
 
 - OR18 are older scripts from previous year.
