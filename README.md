@@ -1,3 +1,5 @@
+<!-- Codename: Mozambique -->
+
 # RO19
 Scripts for Olimpiadi Robotica 2019
 
